@@ -1,19 +1,19 @@
+import dotenv from "dotenv";
+dotenv.config({ path: "./.env" });
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
 import interviewRoutes from './routes/interviewRoutes.js';
-
 import authRoutes from './routes/authRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 
 // Connect Database
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/prep_ai')

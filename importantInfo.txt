@@ -1,0 +1,7 @@
+Prep-AI MongoDB-Atlas-
+ Username - prepAI_user
+ Password - prepAi123
+
+Connection String - mongodb+srv://prepAI_user:prepAi123@cluster0.infyyup.mongodb.net/?appName=Cluster0
+
+MONGO_URI=mongodb+srv://prepAI_user:prepAi123@cluster0.infyyup.mongodb.net/Prep-AI?retryWrites=true&w=majority
