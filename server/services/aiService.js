@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const callClaude = async (messages, systemPrompt, maxTokens = 1000) => {
+const callClaude = async (messages, systemPrompt, maxTokens = 1000, temperature = 0.7) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.warn("ANTHROPIC_API_KEY is not set. Generating mock response instead.");
@@ -18,6 +18,7 @@ const callClaude = async (messages, systemPrompt, maxTokens = 1000) => {
     body: JSON.stringify({
       model: "claude-3-5-sonnet-20241022",
       max_tokens: maxTokens,
+      temperature: temperature,
       system: systemPrompt,
       messages,
     }),
@@ -61,10 +62,12 @@ export const analyzeGap = async (skills, role) => {
 
 export const generateQuestions = async (skills, role, difficulty, company) => {
   const companyContext = company ? ` The interview is for ${company}. Mimic ${company}'s core values, leadership principles, and specific interview style (e.g., if Amazon, include behavioral questions tied to leadership principles; if Google, highly scalable systems; if a matching startup, wearing multiple hats).` : "";
+  const randomizer = `Ensure you select highly varied, distinct, and diverse questions. Do not repeat the same standard questions. Here is a random seed to ensure uniqueness: ${Math.random().toString(36).substring(7)}.`;
   const raw = await callClaude(
-    [{ role: "user", content: `Generate exactly 6 interview questions for a ${role} role at ${difficulty} difficulty for someone with these skills: ${(skills || []).join(", ")}.${companyContext} Return ONLY a JSON array of objects with: id (1-6), type ("DSA"|"System Design"|"HR"), question (string), hint (string), ideal_answer (string). Mix 3 DSA, 2 System Design, 1 HR. Make questions specific and technical.` }],
+    [{ role: "user", content: `Generate exactly 6 interview questions for a ${role} role at ${difficulty} difficulty for someone with these skills: ${(skills || []).join(", ")}.${companyContext} ${randomizer} Return ONLY a JSON array of objects with: id (1-6), type ("DSA"|"System Design"|"HR"), question (string), hint (string), ideal_answer (string). Mix 3 DSA, 2 System Design, 1 HR. Make questions specific and technical.` }],
     "You are a senior engineering interviewer. Return ONLY valid JSON array.",
-    1000
+    1500,
+    0.9
   );
 
   if (!raw) throw new Error("Mock");
