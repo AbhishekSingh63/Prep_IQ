@@ -21,7 +21,9 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/prep_ai')
   .catch(err => console.log(err));
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "*"
+}));
 app.use(express.json());
 
 // Routes

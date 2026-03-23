@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = 'https://prep-iq-backend.onrender.com/api';
 const API_URL = `${BASE_URL}/interview`;
 
 export const parseResumeAPI = async (text) => {

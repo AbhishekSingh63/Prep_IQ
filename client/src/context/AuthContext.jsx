@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, rememberMe = true) => {
     try {
-      const res = await fetch(`${BASE_URL}/auth/login`, {
+      const res = await fetch('https://prep-iq-backend.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password, rememberMe = true) => {
     try {
-      const res = await fetch('http://localhost:5000/api/auth/signup', {
+      const res = await fetch('https://prep-iq-backend.onrender.com/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })

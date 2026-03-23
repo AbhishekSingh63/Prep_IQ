@@ -12,7 +12,7 @@ export default function ProfilePage({ onHome }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/user/profile', {
+        const res = await fetch('https://prep-iq-backend.onrender.com/api/user/profile', {
           headers: { Authorization: `Bearer ${user.token}` }
         });
         if (!res.ok) {
@@ -20,7 +20,7 @@ export default function ProfilePage({ onHome }) {
         }
         const data = await res.json();
         setProfileData(data);
-        
+
         try {
           const hist = await getHistoryAPI(user.token);
           setHistory(hist || []);
@@ -115,9 +115,9 @@ export default function ProfilePage({ onHome }) {
         </div>
       )}
 
-      <button 
+      <button
         onClick={() => { logout(); onHome(); }}
-        className="btn-primary" 
+        className="btn-primary"
         style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'transparent', border: '1px solid var(--red)', color: 'var(--red)' }}
       >
         <LogOut size={16} /> Logout

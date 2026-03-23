@@ -29,10 +29,10 @@ const InterviewSession = ({ questions, sessionData }) => {
 
   const submitAnswer = async () => {
     if (!answers[activeQuestionId]) return;
-    
+
     setIsEvaluating(true);
     try {
-      const response = await fetch('http://localhost:5000/api/interview/evaluate', {
+      const response = await fetch('https://prep-iq-backend.onrender.com/api/interview/evaluate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -66,8 +66,8 @@ const InterviewSession = ({ questions, sessionData }) => {
         </div>
         <div className="question-list">
           {allQuestions.map((q, idx) => (
-            <div 
-              key={q.id} 
+            <div
+              key={q.id}
               className={`question-item ${activeQuestionId === q.id ? 'active' : ''}`}
               onClick={() => setActiveQuestionId(q.id)}
             >
@@ -90,7 +90,7 @@ const InterviewSession = ({ questions, sessionData }) => {
             <span className={`question-badge badge-${activeQuestion.type}`}>
               {activeQuestion.category}
             </span>
-            
+
             {activeQuestion.type === 'coding' ? (
               <>
                 <h2 style={{ marginBottom: '1rem' }}>{activeQuestion.title}</h2>
@@ -105,18 +105,18 @@ const InterviewSession = ({ questions, sessionData }) => {
             )}
 
             <div className="answer-section">
-              <textarea 
-                className="answer-textarea" 
+              <textarea
+                className="answer-textarea"
                 placeholder={activeQuestion.type === 'coding' ? "Write your code here..." : "Type your answer here..."}
                 value={answers[activeQuestionId] || ''}
                 onChange={handleAnswerChange}
                 disabled={!!evaluations[activeQuestionId] || isEvaluating}
                 spellCheck="false"
               />
-              
+
               {!evaluations[activeQuestionId] && (
-                <button 
-                  className="btn btn-primary" 
+                <button
+                  className="btn btn-primary"
                   style={{ alignSelf: 'flex-end' }}
                   onClick={submitAnswer}
                   disabled={!answers[activeQuestionId] || isEvaluating}
