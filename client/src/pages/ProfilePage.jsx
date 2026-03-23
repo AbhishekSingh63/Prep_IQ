@@ -15,13 +15,23 @@ export default function ProfilePage({ onHome }) {
         const res = await fetch('http://localhost:5000/api/user/profile', {
           headers: { Authorization: `Bearer ${user.token}` }
         });
+        if (!res.ok) {
+          throw new Error('Failed to fetch profile. Session may have expired.');
+        }
         const data = await res.json();
         setProfileData(data);
         
-        const hist = await getHistoryAPI(user.token);
-        setHistory(hist);
+        try {
+          const hist = await getHistoryAPI(user.token);
+          setHistory(hist || []);
+        } catch (e) {
+          console.error("Failed to fetch history", e);
+          setHistory([]);
+        }
       } catch (err) {
-        console.error("Failed to fetch profile", err);
+        console.error("Profile load error", err);
+        logout();
+        onHome();
       } finally {
         setLoading(false);
       }
