@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
 import './AuthPage.css';
@@ -12,19 +12,31 @@ export default function AuthPage({ onLoginSuccess }) {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Processing...');
+  const coldStartTimerRef = useRef(null);
   const { login, register } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setLoadingLabel('Processing...');
+
+    // After 3 s, hint that the server may be waking from a cold start
+    coldStartTimerRef.current = setTimeout(() => {
+      setLoadingLabel('Waking up server\u2026 please wait');
+    }, 3000);
+
     let result;
     if (isLogin) {
       result = await login(email, password, rememberMe);
     } else {
       result = await register(name, email, password, rememberMe);
     }
+
+    clearTimeout(coldStartTimerRef.current);
     setLoading(false);
+    setLoadingLabel('Processing...');
 
     if (result.success) {
       onLoginSuccess();
@@ -70,8 +82,11 @@ export default function AuthPage({ onLoginSuccess }) {
           </div>
         )}
 
-        <button type="submit" disabled={loading} className="btn-primary" style={{ marginTop: '12px', padding: '16px', borderRadius: '12px', width: '100%', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', justifyContent: 'center' }}>
-          {loading ? 'Processing...' : (isLogin ? 'Login' : 'Sign Up')}
+        <button type="submit" disabled={loading} className="btn-primary" style={{ marginTop: '12px', padding: '16px', borderRadius: '12px', width: '100%', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+          <span>{loading ? loadingLabel : (isLogin ? 'Login' : 'Sign Up')}</span>
+          {loading && loadingLabel.includes('Waking') && (
+            <span style={{ fontSize: '11px', opacity: 0.8 }}>Vercel cold start — this takes ~10 s once</span>
+          )}
         </button>
       </form>
       
