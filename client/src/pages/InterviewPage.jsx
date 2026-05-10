@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { evaluateAnswerAPI } from '../services/api';
+import Editor from '@monaco-editor/react';
 
 const ROLES = [
   { id: "sde", emoji: "⚙️", name: "SDE", sub: "Software Engineer" },
@@ -13,54 +14,123 @@ const ROLES = [
 export default function InterviewPage({ questions, role, difficulty, onFinish }) {
   const [idx, setIdx] = useState(0);
   const [answer, setAnswer] = useState("");
+  // eslint-disable-next-line no-unused-vars
   const [results, setResults] = useState([]);
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(120);
+  const [codeOutput, setCodeOutput] = useState("");
   const timerRef = useRef();
+  // Use a ref to always have access to the latest results synchronously
+  // (avoids stale closure when onFinish is called)
+  const resultsRef = useRef([]);
 
   const q = questions[idx];
   const progress = (idx / questions.length) * 100;
   const isCode = q?.type === "DSA";
 
   useEffect(() => {
-    setTimeLeft(120); setFeedback(null); setAnswer("");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTimeLeft(120); setFeedback(null); setAnswer(""); setCodeOutput("");
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
-        if (t <= 1) { clearInterval(timerRef.current); return 0; }
+        if (t <= 1) {
+          clearInterval(timerRef.current);
+          // Auto-lock: mark as skipped when timer runs out
+          setResults(prev => {
+            const current = questions[idx];
+            if (!current) return prev;
+            const alreadyAnswered = prev.some((_, i) => i === idx);
+            if (alreadyAnswered) return prev;
+            const skipped = { question: current.question, type: current.type, answer: "(time expired)", score: 0, verdict: "Skipped", feedback: "Time expired.", missing_concepts: [], improved_answer: current.ideal_answer };
+            const updated = [...prev, skipped];
+            resultsRef.current = updated;
+            return updated;
+          });
+          setFeedback({ score: 0, verdict: "Skipped", feedback: "Time expired. You did not submit an answer in time.", missing_concepts: [], improved_answer: questions[idx]?.ideal_answer || "" });
+          return 0;
+        }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [idx]);
+  }, [idx, questions]);
+
+  const runLocalCode = () => {
+    if (!answer.trim()) return;
+    setCodeOutput("Running...");
+    const workerCode = `
+      self.onmessage = function(e) {
+        let output = "";
+        const originalConsoleLog = console.log;
+        console.log = (...args) => {
+          output += args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(" ") + "\\n";
+        };
+        try {
+          new Function(e.data)();
+          self.postMessage({ success: true, output: output || "Executed successfully with no output." });
+        } catch (err) {
+          self.postMessage({ success: false, output: "Error: " + err.message });
+        }
+      };
+    `;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const worker = new Worker(URL.createObjectURL(blob));
+
+    const timeout = setTimeout(() => {
+      worker.terminate();
+      setCodeOutput("Error: Execution timed out (Possible infinite loop).");
+    }, 3000);
+
+    worker.onmessage = (e) => {
+      clearTimeout(timeout);
+      setCodeOutput(e.data.output);
+      worker.terminate();
+    };
+
+    worker.postMessage(answer);
+  };
 
   const submitAnswer = async () => {
     if (!answer.trim()) return;
     clearInterval(timerRef.current);
     setLoading(true);
     try {
-      const fb = await evaluateAnswerAPI(q.question, answer, q.ideal_answer);
+      const fb = await evaluateAnswerAPI(q.question, answer, q.ideal_answer, isCode, q.test_cases || []);
       const parsedFb = fb.data || fb;
       setFeedback(parsedFb);
-      setResults(prev => [...prev, { question: q.question, type: q.type, answer, ...parsedFb }]);
+      setResults(prev => {
+        const updated = [...prev, { question: q.question, type: q.type, answer, ...parsedFb }];
+        resultsRef.current = updated;
+        return updated;
+      });
     } catch {
-      const fb = { score: 6, verdict: "Good", feedback: "Your answer covers the main points. Consider adding more detail.", missing_concepts: [], improved_answer: q.ideal_answer };
+      const fb = { score: 0, verdict: "Incorrect", feedback: "Could not reach the evaluation server. Please check your connection and try again.", missing_concepts: [], improved_answer: q.ideal_answer };
       setFeedback(fb);
-      setResults(prev => [...prev, { question: q.question, type: q.type, answer, ...fb }]);
+      setResults(prev => {
+        const updated = [...prev, { question: q.question, type: q.type, answer, ...fb }];
+        resultsRef.current = updated;
+        return updated;
+      });
     }
     setLoading(false);
   };
 
   const nextQ = () => {
     if (idx + 1 >= questions.length) {
-      onFinish(results);
+      onFinish(resultsRef.current);
     } else {
       setIdx(i => i + 1);
     }
   };
 
   const skip = () => {
-    setResults(prev => [...prev, { question: q.question, type: q.type, answer: "(skipped)", score: 0, verdict: "Skipped", feedback: "Skipped.", missing_concepts: [], improved_answer: q.ideal_answer }]);
+    const skipped = { question: q.question, type: q.type, answer: "(skipped)", score: 0, verdict: "Skipped", feedback: "Skipped.", missing_concepts: [], improved_answer: q.ideal_answer };
+    setResults(prev => {
+      const updated = [...prev, skipped];
+      resultsRef.current = updated;
+      return updated;
+    });
     nextQ();
   };
 
@@ -103,13 +173,28 @@ export default function InterviewPage({ questions, role, difficulty, onFinish })
         <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>💡 {q?.hint}</p>
 
         {isCode ? (
-          <textarea
-            className="code-area"
-            placeholder={`// Write your ${q?.type === "DSA" ? "code" : "answer"} here...\n// Use any language you're comfortable with`}
-            value={answer}
-            onChange={e => setAnswer(e.target.value)}
-            disabled={!!feedback}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+            <div style={{ height: '300px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <Editor
+                height="100%"
+                defaultLanguage="javascript"
+                theme="vs-dark"
+                value={answer}
+                onChange={val => setAnswer(val || "")}
+                options={{ minimap: { enabled: false }, fontSize: 14 }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button className="btn-secondary" onClick={runLocalCode} disabled={!!feedback || loading} style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', color: 'var(--text)' }}>
+                ▶ Run Code (JS)
+              </button>
+            </div>
+            {codeOutput && (
+              <div style={{ background: '#1e1e1e', color: '#00ff96', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', maxHeight: '150px', overflowY: 'auto' }}>
+                {codeOutput}
+              </div>
+            )}
+          </div>
         ) : (
           <textarea
             className="answer-area"

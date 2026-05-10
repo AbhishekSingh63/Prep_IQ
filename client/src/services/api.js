@@ -1,4 +1,4 @@
-const BASE_URL = 'https://prep-iq-backend.onrender.com/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const API_URL = `${BASE_URL}/interview`;
 
 export const parseResumeAPI = async (text) => {
@@ -31,11 +31,11 @@ export const generateQuestionsAPI = async (skills, role, difficulty, company) =>
   return res.json();
 };
 
-export const evaluateAnswerAPI = async (question, answer, idealAnswer) => {
+export const evaluateAnswerAPI = async (question, answer, idealAnswer, isDSA = false, testCases = []) => {
   const res = await fetch(`${API_URL}/evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, answer, idealAnswer })
+    body: JSON.stringify({ question, answer, idealAnswer, isDSA, testCases })
   });
   if (!res.ok) throw new Error('Failed to evaluate answer');
   return res.json();

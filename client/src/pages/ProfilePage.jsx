@@ -9,10 +9,12 @@ export default function ProfilePage({ onHome }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch('https://prep-iq-backend.onrender.com/api/user/profile', {
+        const res = await fetch(`${API_BASE}/user/profile`, {
           headers: { Authorization: `Bearer ${user.token}` }
         });
         if (!res.ok) {
@@ -39,7 +41,8 @@ export default function ProfilePage({ onHome }) {
     if (user?.token) {
       fetchProfile();
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.token]);
 
   if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text)' }}>Loading profile...</div>;
   if (!profileData) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--red)' }}>Error loading profile</div>;

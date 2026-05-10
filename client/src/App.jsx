@@ -24,7 +24,7 @@ export default function App() {
 
   const goHome = () => { setScreen("landing"); setStep(0); };
 
-  const handleResumeNext = (data, rawText) => {
+  const handleResumeNext = (data) => {
     setResumeData(data);
     setScreen("role");
     setStep(1);

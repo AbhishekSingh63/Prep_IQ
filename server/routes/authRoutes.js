@@ -5,7 +5,9 @@ import User from '../models/User.js';
 const router = express.Router();
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) throw new Error('JWT_SECRET is not configured.');
+  return jwt.sign({ id }, jwtSecret, {
     expiresIn: '30d',
   });
 };
@@ -16,6 +18,17 @@ const generateToken = (id) => {
 router.post('/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required.' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
+    }
+    if (name.trim().length < 2 || name.trim().length > 100) {
+      return res.status(400).json({ message: 'Name must be between 2 and 100 characters.' });
+    }
+
     const emailLower = email.toLowerCase().trim();
 
     const userExists = await User.findOne({ email: emailLower });
@@ -23,7 +36,7 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const user = await User.create({ name, email: emailLower, password });
+    const user = await User.create({ name: name.trim(), email: emailLower, password });
 
     if (user) {
       res.status(201).json({
@@ -36,7 +49,8 @@ router.post('/signup', async (req, res) => {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Signup error:', error);
+    res.status(500).json({ message: 'An internal server error occurred.' });
   }
 });
 
@@ -46,6 +60,11 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required.' });
+    }
+
     const emailLower = email.toLowerCase().trim();
 
     const user = await User.findOne({ email: emailLower });
@@ -61,7 +80,8 @@ router.post('/login', async (req, res) => {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'An internal server error occurred.' });
   }
 });
 

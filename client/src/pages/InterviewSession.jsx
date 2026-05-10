@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Terminal, Users, Cpu, Send, CheckCircle } from 'lucide-react';
 import './InterviewSession.css';
 
-const InterviewSession = ({ questions, sessionData }) => {
+const InterviewSession = ({ questions }) => {
   const [activeQuestionId, setActiveQuestionId] = useState(questions?.technical[0]?.id);
   const [answers, setAnswers] = useState({});
   const [evaluations, setEvaluations] = useState({});

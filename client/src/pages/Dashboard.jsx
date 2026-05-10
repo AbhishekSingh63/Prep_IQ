@@ -9,7 +9,7 @@ const MOCK_STATS = [
   { id: 3, role: 'React Developer', company: 'Startup', date: 'Oct 02, 2026', _score: 6.8 },
 ];
 
-const Dashboard = ({ onBack }) => {
+const Dashboard = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">

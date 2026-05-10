@@ -20,9 +20,24 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/prep_ai')
   .then(() => console.log('MongoDB Connected'))
   .catch(err => console.log(err));
 
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://prep-iq.vercel.app',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 // Middleware
 app.use(cors({
-  origin: "*"
+  origin: (origin, callback) => {
+    // Allow non-browser requests (Postman, server-to-server) or known origins
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS policy: Origin ${origin} is not allowed.`));
+    }
+  },
+  credentials: true,
 }));
 app.use(express.json());
 

@@ -63,9 +63,9 @@ router.post('/generate', async (req, res) => {
 
 router.post('/evaluate', async (req, res) => {
   try {
-    const { question, answer, idealAnswer } = req.body;
+    const { question, answer, idealAnswer, isDSA, testCases } = req.body;
     try {
-      const data = await evaluateAnswer(question, answer, idealAnswer);
+      const data = await evaluateAnswer(question, answer, idealAnswer, isDSA, testCases);
       res.json({ data });
     } catch (err) {
       console.log('Using fallback evaluateAnswer');

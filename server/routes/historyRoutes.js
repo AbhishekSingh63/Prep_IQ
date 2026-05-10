@@ -23,6 +23,13 @@ router.post('/', protect, async (req, res) => {
   try {
     const { role, company, difficulty, questions, results, gapAnalysis } = req.body;
 
+    if (!role || !difficulty || !Array.isArray(questions) || !Array.isArray(results)) {
+      return res.status(400).json({ message: 'role, difficulty, questions, and results are required.' });
+    }
+    if (questions.length > 20 || results.length > 20) {
+      return res.status(400).json({ message: 'Too many questions or results in payload.' });
+    }
+
     const history = new History({
       user: req.user._id,
       role,
@@ -36,7 +43,8 @@ router.post('/', protect, async (req, res) => {
     const createdHistory = await history.save();
     res.status(201).json(createdHistory);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Save history error:', error);
+    res.status(500).json({ message: 'An internal server error occurred.' });
   }
 });
 
