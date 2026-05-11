@@ -1,19 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: './.env' });
 
-// ─── Startup Validation ───────────────────────────────────────────────────────
-// Fail loudly at startup so Vercel deployment logs show the exact missing var
-// instead of a cryptic runtime crash later.
-const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET', 'ANTHROPIC_API_KEY'];
-const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
-if (missing.length > 0) {
-  console.error(
-    `[server] FATAL: Missing required environment variables: ${missing.join(', ')}\n` +
-    'Add them to your Vercel project → Settings → Environment Variables.'
-  );
-  process.exit(1);
-}
-
 import express from 'express';
 import cors from 'cors';
 
@@ -24,7 +11,19 @@ import userRoutes from './routes/userRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import { requireDB } from './middleware/dbMiddleware.js';
 import { connectDB, getDBStatus } from './lib/db.js';
-import { protect } from './middleware/authMiddleware.js';
+
+// ─── Startup Validation ───────────────────────────────────────────────────────
+// Log missing vars loudly but DON'T call process.exit() — on Vercel serverless,
+// exiting kills the function instance before it can return a response.
+// Routes that need DB/JWT will fail gracefully via their own middleware instead.
+const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET', 'ANTHROPIC_API_KEY'];
+const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missing.length > 0) {
+  console.error(
+    `[server] WARNING: Missing environment variables: ${missing.join(', ')}. ` +
+    'Add them in Vercel → Settings → Environment Variables and redeploy.'
+  );
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -51,36 +50,44 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 
 // ─── Health Endpoint ──────────────────────────────────────────────────────────
-// Called by the client before login to detect cold-start / DB outage.
-// Returns 200 when healthy, 503 when the DB can't be reached.
+// Vercel routes /api/* to this file, so Express sees the full path /api/health.
 app.get('/api/health', async (_req, res) => {
+  const envStatus = missing.length === 0
+    ? 'ok'
+    : `missing: ${missing.join(', ')}`;
+
   try {
     await connectDB();
-    res.json({ status: 'ok', db: getDBStatus() });
-  } catch {
-    res.status(503).json({ status: 'degraded', db: getDBStatus() });
+    res.json({ status: 'ok', db: getDBStatus(), env: envStatus });
+  } catch (err) {
+    res.status(503).json({
+      status: 'degraded',
+      db: getDBStatus(),
+      env: envStatus,
+      error: err.message,
+    });
   }
 });
 
-// ─── Basic ping (Vercel deployment check) ─────────────────────────────────────
+// ─── Basic ping ───────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {
   res.json({ message: 'Prep IQ API is running', db: getDBStatus() });
 });
 
-// ─── Routes (all protected by DB readiness middleware) ────────────────────────
+// ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/auth', requireDB, authRoutes);
 app.use('/api/history', requireDB, historyRoutes);
-app.use('/api/interview', interviewRoutes);   // interview routes call external AI, no DB read needed at entry
+app.use('/api/interview', interviewRoutes);
 app.use('/api/user', requireDB, userRoutes);
 
 // ─── Error Middleware ─────────────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 
-// ─── Start Server (local dev only — Vercel ignores this) ──────────────────────
+// ─── Local dev server ─────────────────────────────────────────────────────────
+// Vercel ignores app.listen() — it imports `app` as a serverless handler instead.
 app.listen(PORT, () => {
   console.log(`[server] Running on port ${PORT}`);
-  // Eagerly connect on startup in local dev so the first request is fast
   connectDB().catch(() => {});
 });
 
