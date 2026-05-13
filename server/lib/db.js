@@ -12,14 +12,6 @@
 
 import mongoose from 'mongoose';
 
-// Validate critical env var at import time
-const MONGO_URI = process.env.MONGO_URI;
-if (!MONGO_URI) {
-  throw new Error(
-    '[db.js] MONGO_URI is not defined. Add it to your Vercel environment variables.'
-  );
-}
-
 // Use the global object to persist the cache across hot-reloads in dev
 // and across invocations on the same warm Vercel instance in production.
 let cached = global._mongooseCache;
@@ -48,6 +40,13 @@ const MONGOOSE_OPTS = {
  * Safe to call on every request — subsequent calls are no-ops.
  */
 export async function connectDB() {
+  const MONGO_URI = process.env.MONGO_URI;
+  if (!MONGO_URI) {
+    throw new Error(
+      '[db.js] MONGO_URI is not defined. Add it to Vercel → Settings → Environment Variables and redeploy.'
+    );
+  }
+
   // If we already have a live connection, return it immediately
   if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
