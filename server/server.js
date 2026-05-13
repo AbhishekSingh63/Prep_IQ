@@ -32,7 +32,8 @@ const PORT = process.env.PORT || 5000;
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://prep-iq.vercel.app',
+  'https://prep-iq-ebon.vercel.app',
+  'https://prep-h3sskvwqx-abhisheksingh63s-projects.vercel.app',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
